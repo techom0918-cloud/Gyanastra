@@ -4,7 +4,7 @@
 import { safeNextPath } from './redirect';
 
 /** Pages that require a signed-in user. */
-export const PROTECTED_PREFIXES = ['/profile', '/mobile/profile'];
+export const PROTECTED_PREFIXES = ['/profile', '/mobile/profile', '/career-intelligence'];
 /** Pages only for signed-out visitors; signed-in users are sent on to their dashboard. */
 export const GUEST_ONLY_PATHS = ['/login', '/signup', '/forgot-password'];
 

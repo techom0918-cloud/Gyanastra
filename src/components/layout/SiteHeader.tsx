@@ -137,9 +137,14 @@ function MenuAccountLinks({ onNavigate }: { onNavigate: () => void }) {
   const item = 'flex min-h-11 items-center rounded-lg px-3 text-sm font-medium text-ink-soft hover:bg-brand-50/70';
   if (status === 'authenticated' && user) {
     return (
-      <Link href="/profile" onClick={onNavigate} className={item}>
-        Profile
-      </Link>
+      <>
+        <Link href="/career-intelligence" onClick={onNavigate} className={item}>
+          Career Intelligence
+        </Link>
+        <Link href="/profile" onClick={onNavigate} className={item}>
+          Profile
+        </Link>
+      </>
     );
   }
   if (status !== 'anonymous') return null;

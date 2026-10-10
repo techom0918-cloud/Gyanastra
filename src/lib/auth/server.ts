@@ -41,6 +41,23 @@ export function toAuthUser(user: Pick<User, 'id' | 'email' | 'user_metadata'>): 
 }
 
 /**
+ * The signed-in user AND the client that validated them, so database calls reuse the same (possibly just-refreshed)
+ * session instead of building a second client that could read a stale cookie and refresh the token twice.
+ */
+export async function getAuthenticatedSession(): Promise<{ user: AuthUser; client: SupabaseClient } | null> {
+  if (!getAuthConfig()) return null;
+  try {
+    const client = await createAuthClient();
+    const { data, error } = await client.auth.getUser();
+    if (error || !data.user) return null;
+    return { user: toAuthUser(data.user), client };
+  } catch (error) {
+    console.error('[aagey] could not read the session:', error instanceof Error ? error.name : 'unknown error');
+    return null;
+  }
+}
+
+/**
  * The signed-in user, or null. getUser() asks the Auth server to validate the token on every call, so a revoked
  * or expired session is never trusted (unlike reading the cookie, which proves nothing).
  */

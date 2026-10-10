@@ -1,6 +1,6 @@
 'use client';
 
-import { LayoutDashboard, LogOut, UserRound } from 'lucide-react';
+import { Compass, LayoutDashboard, LogOut, UserRound } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { logoutAction } from '@/lib/auth/actions';
 import type { AuthUser } from '@/lib/auth/types';
@@ -47,6 +47,7 @@ export function AccountMenu({ user, base = '' }: { user: AuthUser; base?: string
         { kind: 'header', title: user.name, subtitle: user.email },
         { kind: 'separator' },
         { kind: 'link', href: base ? `${base}` : '/dashboard', label: base ? 'Home' : 'Dashboard', icon: LayoutDashboard },
+        { kind: 'link', href: '/career-intelligence', label: 'Career Intelligence', icon: Compass },
         { kind: 'link', href: base ? `${base}/profile` : '/profile', label: 'Profile', icon: UserRound },
         { kind: 'separator' },
         { kind: 'button', label: 'Log out', icon: LogOut, tone: 'danger', onSelect: () => void logout() },

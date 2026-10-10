@@ -1,6 +1,6 @@
 'use client';
 
-import { Bell, Brain, FilePlus2, LogIn } from 'lucide-react';
+import { Bell, Brain, Compass, FilePlus2, LogIn } from 'lucide-react';
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { OfferReport } from '@/types';
@@ -31,6 +31,7 @@ const QUICK_ACTIONS = [
   { href: '/reports', title: 'Submit a report', text: 'Share an offer outcome anonymously', icon: FilePlus2 },
   { href: '/tracker', title: 'Track an offer', text: 'Monitor status and get alerts', icon: Bell },
   { href: '/backup-planner', title: 'Backup planner', text: 'Plan your next few weeks', icon: Brain },
+  { href: '/career-intelligence', title: 'Career Intelligence', text: 'Private offer, job and 90-day guidance', icon: Compass },
 ];
 
 /** "Your offers": only rendered from a server-validated session; never shows another user's data or demo data. */
@@ -161,7 +162,7 @@ export function DashboardView() {
       <PersonalSection />
 
       <h2 className="mb-3 text-sm font-semibold text-ink">Quick actions</h2>
-      <div className="mb-8 grid gap-3 sm:grid-cols-3">
+      <div className="mb-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {QUICK_ACTIONS.map(({ href, title, text, icon: Icon }) => (
           <Link key={href} href={href} className="group flex items-start gap-3 rounded-xl border border-line bg-surface p-4 shadow-card transition-colors hover:border-brand-300">
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600">

@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { Building2, ClipboardList, FilePlus2, Sparkles } from 'lucide-react';
+import { Building2, ClipboardList, Compass, FilePlus2, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 import { DashboardHeading } from '@/components/features/DashboardView';
 
@@ -9,6 +9,7 @@ const ACTIONS = [
   { href: '/mobile/companies', title: 'Companies', text: 'See community-reported outcomes and reliability.', icon: Building2 },
   { href: '/mobile/report', title: 'Submit a report', text: 'Share what happened with an offer. No account needed.', icon: FilePlus2 },
   { href: '/mobile/offers', title: 'Track an offer', text: 'Keep your own offers and get alerts.', icon: ClipboardList },
+  { href: '/career-intelligence', title: 'Career Intelligence', text: 'Private offer, job and 90-day guidance.', icon: Compass },
   { href: '/backup-planner', title: 'Backup planner', text: 'Plan next steps if an offer falls through.', icon: Sparkles },
 ];
 
