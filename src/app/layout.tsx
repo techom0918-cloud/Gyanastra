@@ -1,7 +1,7 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
-import Navbar from "@/components/layout/Navbar";
+import { AuthProvider } from "@/components/auth/AuthProvider";
 
 const geistSans = localFont({
   src: "../fonts/GeistVF.woff2",
@@ -16,29 +16,27 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Aagey AI — Campus Placement Decision Support",
+  title: {
+    default: "Aagey — From Uncertainty to Your Next Opportunity",
+    template: "%s · Aagey",
+  },
   description:
-    "Track offer reliability, get AI-powered backup career plans, and monitor your offer status with community-reported data.",
+    "Community-reported campus placement offer outcomes with transparent reliability indicators, offer tracking, and backup career planning.",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  // Needed for env(safe-area-inset-*) on notched phones (used by the /mobile app shell).
+  viewportFit: "cover",
+  themeColor: "#ffffff",
+};
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html
-      lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
-      <body className="min-h-full flex flex-col bg-gray-50 text-gray-900">
-        <Navbar />
-        <main className="flex-1">{children}</main>
-        <footer className="border-t border-gray-200 bg-white py-6 text-center text-xs text-gray-500">
-          <p>
-            Aagey AI — Community-reported data for informational purposes
-            only. Not a guarantee of offer outcomes.
-          </p>
-          <p className="mt-1">
-            Code2Career National AI Hackathon 2026 | Demo Application
-          </p>
-        </footer>
+    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
+      <body className="flex min-h-dvh flex-col bg-canvas text-ink">
+        <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
   );

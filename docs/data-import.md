@@ -21,8 +21,8 @@ source says was received, delayed, revoked, put on hold for background verificat
 
 ## 2. Data sources: research checklist
 
-No specific source has been verified for this project yet. Before adding a source, check each item and
-record the outcome in your notes.
+Sources researched so far, with real URLs, dates and limitations, are in the **[source register](data-sources.md)**.
+None has been imported. Before adding a source, check each item below and record the outcome in the register.
 
 **Candidate source types (all public, no login):**
 - Company press releases, investor/stock-exchange filings and earnings-call transcripts that talk about
@@ -73,6 +73,10 @@ The API contract (`OfferReport` in `src/types/index.ts`) is unchanged. The prove
 | *(set by pipeline)* | — | `is_demo` | Always `false` (enforced by a database constraint) |
 | *(set by pipeline)* | — | `source_type` | `verified` if verified; `community` for self-reports; otherwise `public` |
 
+**Personal data in free text** (description, role, sourceReference, verificationNote) is rejected by the same
+detector the app's forms use (`src/lib/privacy.ts`): email addresses, phone/Aadhaar-length numbers, PAN-like
+identifiers and roll/registration numbers. Names cannot be detected reliably, so reviewers must remove them.
+
 **Rejected outright:** unknown columns and personal or pipeline-owned columns (`name`, `studentName`,
 `email`, `phone`, `rollNumber`, `offerLetter`, `id`, `companySlug`, `sourceType`, `isDemo`). Free text
 containing an email address or phone number is also rejected.
@@ -120,10 +124,31 @@ Exit codes: `0` ok, `1` error or confirmation refused, `2` dry run finished with
 `delete from offer_reports where import_batch_id = '<batch id>';`
 The pipeline never deletes anything itself.
 
-## 5. Tests
+## 5. Collection and review workflow (authorised team members)
+
+1. **Collect.** One person (the collector) fills a copy of `data/import-template.csv` by hand from sources in the
+   [register](data-sources.md): one row per documented outcome, facts and a link only, no names, no copied text.
+   Keep working files outside the repository; never commit a file containing real records before review.
+2. **Validate offline.** `npm run import:reports -- my-batch.csv --offline`, then fix every rejected row.
+3. **Review.** A second person (the reviewer) re-opens every source and checks the row against it. Only the
+   reviewer may set `verificationStatus: verified`, and only with a `verifiedAt` date and a `verificationNote`
+   saying which primary source was compared. Everything else stays `unverified` (or `self_reported`).
+4. **Dry run against the database.** `npm run import:reports -- my-batch.csv --report=import-report.json`.
+   Resolve each *possible duplicate* deliberately; use `--allow-possible-duplicates` only for rows the reviewer
+   has confirmed are separate outcomes. (`import-report*.json` is git-ignored.)
+5. **Approve.** The project owner approves the batch id shown by the dry run. Production imports need this approval.
+6. **Commit.** `npm run import:reports -- my-batch.csv --commit`, then type the batch id.
+7. **Record.** Note the batch id, date, collector and reviewer in the source register. To undo a batch, see section 4.
+
+If no record can be collected lawfully and reliably, import nothing: the template stays empty, and the app
+shows "Insufficient Data" rather than invented numbers.
+
+## 6. Tests
 
 - `tests/unit/import-validate.test.ts` and `tests/unit/import-pipeline.test.ts` cover validation, duplicates,
   dry-run read-only behaviour, provenance and commit semantics. They need no database.
+- `tests/unit/import-cli.test.ts` runs the CLI offline on CSV, JSON and malformed fixtures, checks that commit
+  confirmation needs the exact batch id, and checks that a full import → re-import cycle inserts nothing the second time.
 - `tests/integration/import.test.ts` runs the pipeline against the live database (`AAGEY_DB_TEST=1`). It skips
   with a message until the provenance migration is applied, and deletes only its own `import-test-<timestamp>` batch.
 - Fixtures (`tests/fixtures/import/`) are tagged `[aagey-integration-test]` and use `example.org`

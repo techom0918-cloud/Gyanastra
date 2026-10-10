@@ -1,26 +1,86 @@
 @import "tailwindcss";
 
+/*
+ * Aagey design tokens. The palette comes from the logo: navy wordmark (#0c1c3c), teal arrow, light-blue backdrop.
+ * Primary actions use the restrained blue scale; semantic status colours live in src/components/ui/status.ts.
+ * Light theme only (color-scheme is fixed): the UI has not been designed or tested for dark mode.
+ */
+@theme {
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --color-ink: #0c1c3c;
+  --color-ink-soft: #3d4a66;
+  --color-muted: #5b6785;
+  --color-line: #e3e8f1;
+  --color-line-strong: #cfd7e6;
+  --color-surface: #ffffff;
+  --color-canvas: #f6f8fc;
+
+  --color-brand-50: #f0f6ff;
+  --color-brand-100: #e0edff;
+  --color-brand-200: #c2dbff;
+  --color-brand-300: #94c0fb;
+  --color-brand-400: #5c9bf0;
+  --color-brand-500: #2f78e0;
+  --color-brand-600: #1d5fc4;
+  --color-brand-700: #164a9c;
+  --color-brand-800: #123a7a;
+
+  --color-accent-100: #d9f2ee;
+  --color-accent-600: #2a8f86;
+  --color-accent-700: #1f766e;
+
+  --radius-card: 0.875rem;
+  --shadow-card: 0 1px 2px rgb(12 28 60 / 0.05), 0 1px 1px rgb(12 28 60 / 0.03);
+  --shadow-pop: 0 8px 24px rgb(12 28 60 / 0.12), 0 2px 6px rgb(12 28 60 / 0.06);
+}
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: light;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  /* No page may scroll sideways; long unbroken strings wrap instead. */
+  overflow-x: hidden;
+  overflow-wrap: anywhere;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-brand-500);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Safe-area helpers for notched phones. */
+@utility pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+@utility pt-safe {
+  padding-top: env(safe-area-inset-top);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Native <dialog> sheets (see components/ui/Dialog.tsx) */
+dialog::backdrop {
+  background: rgb(12 28 60 / 0.45);
 }

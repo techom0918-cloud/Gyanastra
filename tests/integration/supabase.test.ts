@@ -71,6 +71,28 @@ describe.skipIf(!enabled)('Supabase repository (live database)', () => {
     expect(all.find((o) => o.id === offer.id)).toMatchObject({ currentStatus: 'joining_confirmed', notes: TEST_TAG });
   });
 
+  it('shows a tracked offer only to a viewer holding its id, and never updates demo offers', async () => {
+    const offer = await createSupabaseRepository(freshClient()).insertTrackedOffer({
+      companySlug: slug,
+      companyName: 'Aagey Integration Test',
+      currentStatus: 'offer_received',
+      notes: TEST_TAG,
+      isDemo: false,
+    });
+    created.offers.push(offer.id);
+
+    const anonymous = await createSupabaseRepository(freshClient()).listTrackedOffersForViewer([]);
+    expect(anonymous.map((o) => o.id)).not.toContain(offer.id);
+    expect(anonymous.every((o) => o.isDemo)).toBe(true);
+    const owner = await createSupabaseRepository(freshClient()).listTrackedOffersForViewer([offer.id]);
+    expect(owner.map((o) => o.id)).toContain(offer.id);
+
+    const demo = anonymous[0];
+    if (demo) {
+      expect(await createSupabaseRepository(freshClient()).updateTrackedOffer(demo.id, { notes: 'should not apply' })).toBeNull();
+    }
+  });
+
   it('returns null when updating an id that does not exist', async () => {
     const result = await createSupabaseRepository(freshClient()).updateTrackedOffer(`missing-${Date.now()}`, { notes: 'x' });
     expect(result).toBeNull();

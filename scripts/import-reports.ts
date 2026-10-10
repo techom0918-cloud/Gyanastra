@@ -19,6 +19,7 @@ import {
   ImportError,
   ImportPlan,
   InputFormat,
+  isCommitConfirmed,
   parseInput,
   planImport,
   prepareImport,
@@ -92,7 +93,7 @@ function printPlan(plan: ImportPlan, mode: string): void {
 }
 
 async function confirmCommit(plan: ImportPlan, confirm?: string): Promise<boolean> {
-  if (confirm !== undefined) return confirm === plan.batchId;
+  if (confirm !== undefined) return isCommitConfirmed(plan.batchId, confirm);
   if (!process.stdin.isTTY) {
     console.error(`\nNot a terminal: pass --confirm=${plan.batchId} to insert non-interactively.`);
     return false;
@@ -100,7 +101,7 @@ async function confirmCommit(plan: ImportPlan, confirm?: string): Promise<boolea
   const rl = createInterface({ input: process.stdin, output: process.stdout });
   try {
     const answer = await rl.question(`\nInsert ${plan.toInsert.length} row(s) into the LIVE database? Type the batch id to confirm: `);
-    return answer.trim() === plan.batchId;
+    return isCommitConfirmed(plan.batchId, answer);
   } finally {
     rl.close();
   }

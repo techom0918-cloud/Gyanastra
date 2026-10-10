@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { OfferReport, OfferStatus } from '@/types';
 import { offerStatusSchema, reportSubmissionSchema } from '@/lib/validation/schemas';
 import { slugify } from '@/lib/slug';
+import { findPersonalData } from '@/lib/privacy';
 
 export const EVIDENCE_TYPES = ['official_notice', 'company_statement', 'news_report', 'self_report'] as const;
 export type EvidenceType = (typeof EVIDENCE_TYPES)[number];
@@ -103,9 +104,6 @@ export interface ValidateOptions {
   testFixtures?: boolean;
 }
 
-const EMAIL = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i;
-// 10+ digits, optionally with +, spaces, dots or dashes between them (Indian and international numbers).
-const PHONE = /\+?\d(?:[\s.-]?\d){9,}/;
 const RESERVED_HOST = /(^|\.)(example\.(com|net|org)|localhost|example|test|invalid|local)$/i;
 
 export function validateRecord(raw: unknown, row: number, options: ValidateOptions): ValidationResult {
@@ -191,8 +189,10 @@ export function validateRecord(raw: unknown, row: number, options: ValidateOptio
   for (const field of textFields) {
     const value = r[field];
     if (!value) continue;
-    if (EMAIL.test(value)) errors.push({ field, message: 'contains an email address; remove personal data' });
-    if (field !== 'sourceUrl' && PHONE.test(value)) errors.push({ field, message: 'contains a phone number; remove personal data' });
+    // URLs legitimately contain long numbers and codes, so only email addresses are checked there.
+    for (const match of findPersonalData(value)) {
+      if (field !== 'sourceUrl' || match.kind === 'email') errors.push({ field, message: match.message });
+    }
     if (!options.testFixtures && value.includes(TEST_TAG)) {
       errors.push({ field, message: 'contains the integration-test tag; test fixtures are never imported' });
     }

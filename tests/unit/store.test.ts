@@ -13,7 +13,7 @@ describe('store (over the memory backend)', () => {
     const reports = await store.getAllReports();
     expect(reports).toHaveLength(25);
     expect(reports.every((r) => r.isDemo === true)).toBe(true);
-    expect(await store.getDashboardStats()).toEqual({ total: 25, companies: 6, delayed: 9, revoked: 2, confirmed: 11 });
+    expect(await store.getDashboardStats()).toEqual({ total: 25, companies: 6, delayed: 9, revoked: 2, confirmed: 11, demo: 25 });
   });
 
   it('sorts reports newest first', async () => {
@@ -53,7 +53,7 @@ describe('store (over the memory backend)', () => {
     const updated = await store.updateTrackedOffer(offer.id, { companyName: 'Capgemini', notes: 'moved' });
     expect(updated).toMatchObject({ companySlug: 'capgemini', notes: 'moved' });
 
-    const offers = await store.getTrackedOffers();
+    const offers = await store.getTrackedOffers([offer.id]);
     expect(offers).toHaveLength(2);
     expect(offers[0].isDemo).toBe(true);
     expect(offers.find((o) => o.id === offer.id)?.companySlug).toBe('capgemini');
@@ -61,6 +61,37 @@ describe('store (over the memory backend)', () => {
 
   it('returns null when updating an unknown tracked offer', async () => {
     expect(await store.updateTrackedOffer('missing', { notes: 'x' })).toBeNull();
+  });
+
+  it('shows each viewer only demo offers and the offers whose ids they hold (regression: all offers were public)', async () => {
+    const mine = await store.addTrackedOffer({ companyName: 'Acme', currentStatus: 'offer_received', notes: 'private' });
+    const theirs = await store.addTrackedOffer({ companyName: 'Other', currentStatus: 'offer_received' });
+    expect(mine.id).toMatch(/^[0-9a-f-]{36}$/); // unguessable
+
+    const visible = (await store.getTrackedOffers([mine.id])).map((o) => o.id);
+    expect(visible).toContain(mine.id);
+    expect(visible).not.toContain(theirs.id);
+    expect((await store.getTrackedOffers([])).every((o) => o.isDemo)).toBe(true);
+  });
+
+  it('keeps demo tracked offers read-only', async () => {
+    expect(await store.updateTrackedOffer('demo-tracked-1', { notes: 'vandalised' })).toBeNull();
+    const [demo] = await store.getTrackedOffers([]);
+    expect(demo.notes).not.toBe('vandalised');
+  });
+
+  it('builds alerts for real offers from real reports only, never from demo reports', async () => {
+    // The seed has two demo Wipro reports from the last few months, one of them a revocation.
+    const offer = await store.addTrackedOffer({ companyName: 'Wipro', currentStatus: 'offer_received' });
+    const [real] = (await store.getTrackedOffers([offer.id])).filter((o) => !o.isDemo);
+    expect(real.alerts.map((a) => a.type)).toEqual(['info']); // only "limited community data"
+    expect(real.alerts[0].message).toContain('Only 0 reports');
+  });
+
+  it('scores companies from real reports only once any exist', async () => {
+    await store.addReport({ companyName: 'Infosys', status: 'offer_revoked' });
+    const summary = await store.getCompanySummary('infosys');
+    expect(summary?.reliabilityIndicator).toMatchObject({ basis: 'real', score: null, excluded: { demo: 6, futureOrInvalidDate: 0 } });
   });
 });
 

@@ -37,7 +37,7 @@ Aagey AI is a three-module platform that brings transparency to campus placement
 - **Icons:** Lucide React
 - **Data:** Supabase (PostgreSQL) via `@supabase/supabase-js`, with an in-memory demo fallback when no database is configured
 - **Tests:** Vitest
-- **AI:** Rule-based mock planner (OpenAI-swappable)
+- **AI:** Backup Planner uses Claude (`@anthropic-ai/sdk`) when `ANTHROPIC_API_KEY` is set; otherwise a rule-based template (each plan says which)
 
 ## Quick Start
 
@@ -83,7 +83,8 @@ Integration tests insert rows tagged `[aagey-integration-test]` and delete only 
 
 `npm run import:reports -- <file.csv|file.json>` validates and dry-runs an import of documented offer outcomes;
 `--commit` inserts after a typed confirmation. See [docs/data-import.md](docs/data-import.md) for the record format,
-provenance and verification rules, and the source checklist.
+provenance and verification rules, and the review workflow. Researched sources (none imported) are in
+[docs/data-sources.md](docs/data-sources.md).
 
 ## Project Structure
 
@@ -115,10 +116,14 @@ src/
 │   │   ├── supabase-repository.ts # PostgreSQL backend
 │   │   ├── memory-repository.ts  # In-memory demo backend
 │   │   └── http.ts               # API error/response helpers
+│   ├── abuse/submissions.ts      # Rate limits and submitter hashing
+│   ├── import/                   # Documented-outcome import pipeline
+│   ├── privacy.ts                # Personal-data detection
 │   ├── scoring/reliability.ts    # Reliability indicator engine
 │   ├── alerts/engine.ts          # Alert generation rules
 │   ├── ai/
-│   │   ├── backup-planner.ts     # Backup plan generator
+│   │   ├── backup-planner.ts     # Plan orchestration + rule-based template
+│   │   ├── claude-planner.ts     # Claude-backed plan generation (server-only)
 │   │   └── classifier.ts        # Text classification engine
 │   └── validation/schemas.ts     # Zod validation schemas
 └── types/index.ts                # Core TypeScript types
@@ -127,21 +132,20 @@ src/
 ## Reliability Indicator Formula
 
 ```
-rawScore = (weightedPositive / weightedTotal) × 100
+Basis:     real (non-demo) reports only; demo data only when nothing else exists (labelled "Demo data")
+Scored:    final outcomes only. Joining Confirmed = positive; Joining Delayed, Offer Revoked = negative
+           (Offer Received / BG Verification Pending are shown but never scored)
+Weight:    recency (≤ 183 days: 1.5, older: 0.7) × severity (revoked: 2, else 1)
+           × day cap (community reports per company per day share ≤ 3 units)
+score   =  100 × (P + 2.5) / (P + N + 5)      P, N = weighted positive / negative sums
+           null ("Insufficient Data") with fewer than 3 scored outcomes
 
-Recency weights: last 6 months → 1.5x, older → 0.7x
-Revocation penalty: −15 per revocation (max −45)
-Small-sample damping: pulls toward 50 when < 10 reports
-
-Labels:
-  < 3 reports    → Insufficient Data
-  Score < 40     → Caution Advised
-  Score 40–59    → Mixed Reports
-  Score 60–79    → Mostly Positive
-  Score ≥ 80     → Highly Positive
+Labels:    < 40 Caution Advised · 40–59 Mixed Reports · 60–79 Mostly Positive · ≥ 80 Highly Positive
+Confidence from effective sample size; capped at Medium without any verified outcome
 ```
 
-Full methodology available at `/methodology`.
+Not a probability and not validated against real outcomes. The `/methodology` page renders the formula from the
+constants in `src/lib/scoring/reliability.ts`, so the two cannot drift apart.
 
 ## Demo Data
 
@@ -158,7 +162,22 @@ The app ships with 25 seed reports across 6 companies (Infosys, TCS, Wipro, Cogn
 
 ## Extending
 
-**Add OpenAI:** Set `OPENAI_API_KEY` environment variable. The backup planner in `src/lib/ai/backup-planner.ts` will automatically use the API when the key is available.
+**Enable the AI planner:** set `ANTHROPIC_API_KEY` (server-only) and a spend limit in the Anthropic console. The planner
+(`src/lib/ai/claude-planner.ts`) uses Claude Opus 5.5 with structured output, a 20 s timeout, server-side refusal
+fallback and a per-client cap; any failure falls back to the template. Tests mock the provider (no paid calls).
+
+## Environment Variables
+
+| Name | Required | Purpose |
+|---|---|---|
+| `SUPABASE_URL` | Yes (production) | Supabase project URL |
+| `SUPABASE_SECRET_KEY` | Yes (production) | Server-only secret / service-role key |
+| `AAGEY_STORAGE` | Recommended: `supabase` | Fail with 503 instead of silently using memory |
+| `ANTHROPIC_API_KEY` | Optional | Enables the Claude-backed Backup Planner |
+| `AAGEY_RATE_LIMIT_SECRET` | Optional | Key for submitter hashes (defaults to a value derived from `SUPABASE_SECRET_KEY`) |
+| `AAGEY_DB_TEST` | Tests only | `1` runs the live integration tests |
+
+None of these may use a `NEXT_PUBLIC_` prefix. Security and privacy details: [docs/security.md](docs/security.md).
 
 ## License
 

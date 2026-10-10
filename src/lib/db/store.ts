@@ -5,7 +5,8 @@ import type { TrackedOfferUpdate } from '../validation/schemas';
 import { computeReliabilityIndicator } from '../scoring/reliability';
 import { generateAlerts } from '../alerts/engine';
 import { getRepository } from './config';
-import { StorageMode, TrackedOfferChanges } from './repository';
+import { ReportSubmissionMeta, StorageMode, TrackedOfferChanges } from './repository';
+import type { RecentSubmission } from '../abuse/submissions';
 import { slugify } from '../slug';
 
 export { slugify };
@@ -38,15 +39,24 @@ export async function getReportsByCompany(slug: string): Promise<OfferReport[]> 
 }
 
 export async function addReport(
-  report: Omit<OfferReport, 'id' | 'companySlug' | 'reportedAt' | 'sourceType' | 'isDemo'>
+  report: Omit<OfferReport, 'id' | 'companySlug' | 'reportedAt' | 'sourceType' | 'isDemo'>,
+  meta?: ReportSubmissionMeta
 ): Promise<OfferReport> {
-  return getRepository().insertReport({
-    ...report,
-    companySlug: slugify(report.companyName),
-    reportedAt: new Date().toISOString().slice(0, 10),
-    sourceType: 'community',
-    isDemo: false,
-  });
+  return getRepository().insertReport(
+    {
+      ...report,
+      companySlug: slugify(report.companyName),
+      reportedAt: new Date().toISOString().slice(0, 10),
+      sourceType: 'community',
+      isDemo: false,
+    },
+    meta
+  );
+}
+
+/** Null when the backend cannot record submitter hashes (see Repository.listSubmissionsBySubmitter). */
+export async function getRecentSubmissions(submitterHash: string, sinceIso: string): Promise<RecentSubmission[] | null> {
+  return getRepository().listSubmissionsBySubmitter(submitterHash, sinceIso);
 }
 
 // --- Companies ---
@@ -90,13 +100,21 @@ export async function getAllCompanies(): Promise<Company[]> {
 }
 
 // --- Tracked Offers ---
-export async function getTrackedOffers(): Promise<TrackedOffer[]> {
+/** Who is asking for tracked offers: a signed-in account, or a browser holding private offer ids. */
+export type TrackerViewer = { userId: string } | string[];
+
+/** Account offers, or (without an account) demo offers plus the offers whose ids the browser holds. */
+export async function getTrackedOffers(viewer: TrackerViewer): Promise<TrackedOffer[]> {
   const repo = getRepository();
-  const [offers, reports] = await Promise.all([repo.listTrackedOffers(), repo.listReports()]);
+  const offersPromise = Array.isArray(viewer) ? repo.listTrackedOffersForViewer(viewer) : repo.listTrackedOffersForUser(viewer.userId);
+  const [offers, reports] = await Promise.all([offersPromise, repo.listReports()]);
   const groups = groupBySlug(reports);
   // Alerts are recomputed from current reports on every read; they are never stored.
+  // Demo offers are compared with demo reports only, real offers with real reports only.
   return offers.map((offer) => {
-    const companyReports = (groups.get(offer.companySlug) ?? []).sort(byReportedAtDesc);
+    const companyReports = (groups.get(offer.companySlug) ?? [])
+      .filter((r) => Boolean(r.isDemo) === Boolean(offer.isDemo))
+      .sort(byReportedAtDesc);
     return {
       ...offer,
       alerts: generateAlerts(offer, companyReports),
@@ -104,18 +122,29 @@ export async function getTrackedOffers(): Promise<TrackedOffer[]> {
   });
 }
 
-export async function addTrackedOffer(input: Omit<TrackedOffer, 'id' | 'companySlug' | 'alerts'>): Promise<TrackedOffer> {
-  return getRepository().insertTrackedOffer({
-    ...input,
-    companySlug: slugify(input.companyName),
-    isDemo: false,
-  });
+/** False until the accounts migration (tracked_offers.user_id) has been applied. */
+export async function supportsAccountTracking(): Promise<boolean> {
+  return getRepository().supportsUserOffers();
 }
 
-export async function updateTrackedOffer(id: string, updates: TrackedOfferUpdate): Promise<TrackedOffer | null> {
+export async function addTrackedOffer(
+  input: Omit<TrackedOffer, 'id' | 'companySlug' | 'alerts'>,
+  ownerUserId?: string
+): Promise<TrackedOffer> {
+  return getRepository().insertTrackedOffer(
+    {
+      ...input,
+      companySlug: slugify(input.companyName),
+      isDemo: false,
+    },
+    ownerUserId
+  );
+}
+
+export async function updateTrackedOffer(id: string, updates: TrackedOfferUpdate, ownerUserId?: string): Promise<TrackedOffer | null> {
   const changes: TrackedOfferChanges = { ...updates };
   if (updates.companyName !== undefined) changes.companySlug = slugify(updates.companyName);
-  return getRepository().updateTrackedOffer(id, changes);
+  return getRepository().updateTrackedOffer(id, changes, ownerUserId);
 }
 
 // --- Stats ---
@@ -126,6 +155,8 @@ export async function getDashboardStats() {
   const delayed = reports.filter((r) => r.status === 'joining_delayed').length;
   const revoked = reports.filter((r) => r.status === 'offer_revoked').length;
   const confirmed = reports.filter((r) => r.status === 'joining_confirmed').length;
+  // How many of the totals are synthetic demo records, so the UI can label them truthfully.
+  const demo = reports.filter((r) => r.isDemo).length;
 
-  return { total, companies, delayed, revoked, confirmed };
+  return { total, companies, delayed, revoked, confirmed, demo };
 }

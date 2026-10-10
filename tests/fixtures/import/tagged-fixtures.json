@@ -1,0 +1,21 @@
+[
+  {
+    "companyName": "Fixture Delta Ltd",
+    "status": "joining_delayed",
+    "reportedAt": "2026-09-01",
+    "description": "[aagey-integration-test] JSON fixture, not a real report",
+    "evidenceType": "news_report",
+    "sourceUrl": "https://example.org/fixture/delta",
+    "collectedAt": "2026-09-02"
+  },
+  {
+    "companyName": "Fixture Delta Ltd",
+    "status": "offer_revoked",
+    "reportedAt": "2026-09-01",
+    "description": "[aagey-integration-test] PAN ABCDE1234F must be rejected",
+    "evidenceType": "official_notice",
+    "sourceReference": "Fixture notice FX-json",
+    "collectedAt": "2026-09-02",
+    "studentName": "must be rejected"
+  }
+]

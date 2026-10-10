@@ -50,11 +50,27 @@ export interface Company {
 
 export interface ReliabilityIndicator {
   label: 'Insufficient Data' | 'Caution Advised' | 'Mixed Reports' | 'Mostly Positive' | 'Highly Positive';
-  score: number; // 0-100, shown only when enough data
-  confidence: 'low' | 'medium' | 'high';
+  /** 0-100, or null when there are too few final outcomes to score. Never a probability. */
+  score: number | null;
+  confidence: 'insufficient' | 'low' | 'medium' | 'high';
+  /** Which records the score uses: real (non-demo) reports, demo-only data, or nothing. Never a mix. */
+  basis: 'real' | 'demo' | 'none';
+  /** Every report for the company, including demo and in-progress ones. */
   totalReports: number;
-  recentReports: number; // last 6 months
-  positiveRate: number; // 0-1
+  /** Final outcomes (confirmed / delayed / revoked) that count toward the score. */
+  scoredOutcomes: number;
+  /** Scored outcomes reported in the last 183 days. */
+  recentOutcomes: number;
+  /** Offer Received / BG Verification Pending: shown, never scored. */
+  inProgressReports: number;
+  outcomes: { confirmed: number; delayed: number; revoked: number };
+  /** Scored outcomes by evidence level. */
+  evidence: { verified: number; publicUnverified: number; community: number };
+  excluded: { demo: number; futureOrInvalidDate: number };
+  /** Same-day community reports whose weight was shared under the daily cap. */
+  burstCappedReports: number;
+  /** Recency-weighted share of positive outcomes (revocations weighted ×2), 0-1, without the prior. */
+  weightedPositiveShare: number | null;
   explanation: string;
 }
 

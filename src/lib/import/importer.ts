@@ -32,6 +32,11 @@ export function parseInput(text: string, format: InputFormat): unknown[] {
   return data;
 }
 
+/** A commit is confirmed only by typing (or passing) the exact batch id shown by the dry run. */
+export function isCommitConfirmed(batchId: string, answer: string | undefined): boolean {
+  return answer !== undefined && answer.trim() === batchId;
+}
+
 /** Deterministic batch id: the same file imported on the same day gets the same id. */
 export function computeBatchId(fileText: string, today: string): string {
   const digest = createHash('sha256').update(fileText).digest('hex').slice(0, 10);

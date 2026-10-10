@@ -7,6 +7,10 @@ export async function GET(
   { params }: { params: Promise<{ slug: string }> }
 ) {
   const { slug } = await params;
+  // Slugs are produced by slugify(): lowercase letters, digits and dashes.
+  if (!/^[a-z0-9-]{1,200}$/.test(slug)) {
+    return NextResponse.json({ error: 'Company not found' }, { status: 404 });
+  }
   try {
     const [company, reports] = await Promise.all([getCompanySummary(slug), getReportsByCompany(slug)]);
 
